@@ -151,10 +151,12 @@ class Post(TimestampedModel):
 
 
 class Comment(TimestampedModel):
-    """Модель комментария к публикации.
+    """
+    Модель комментария к публикации.
 
     Attributes:
-        post: Публикация, к которой относится комментарий"""
+        post: Публикация, к которой относится комментарий
+    """
 
     post = models.ForeignKey(
         Post,
