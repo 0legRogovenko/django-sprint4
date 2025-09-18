@@ -1,7 +1,5 @@
 from django.db.models import Count
 
-
-
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.models import User

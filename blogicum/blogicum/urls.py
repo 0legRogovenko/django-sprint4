@@ -12,13 +12,14 @@ urlpatterns = [
     path('', include('pages.urls')),
     path('', include('blog.urls', namespace='blog')),
     path('auth/', include('django.contrib.auth.urls')),
-    path('auth/registration/',
-         CreateView.as_view(
+    path(
+        'auth/registration/',
+        CreateView.as_view(
             template_name='registration/registration_form.html',
             form_class=UserCreationForm,
             success_url='/',
-         ),
-         name='registration'
+        ),
+        name='registration',
     ),
     path('logout/', LogoutView.as_view(next_page='/'), name='logout'),
 ]
