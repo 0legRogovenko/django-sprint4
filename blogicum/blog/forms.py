@@ -1,5 +1,5 @@
-
 from django import forms
+
 from .models import Post, Category, Location, Comment
 
 
@@ -18,20 +18,7 @@ class PostForm(forms.ModelForm):
 
     class Meta:
         model = Post
-        fields = [
-            'title',
-            'text',
-            'image',
-            'category',
-            'location',
-            'pub_date',
-        ]
-        labels = {
-            'title': 'Заголовок публикации',
-            'text': 'Текст публикации',
-            'image': 'Изображение',
-            'pub_date': 'Дата и время публикации',
-        }
+        exclude = ['author']
         widgets = {
             'text': forms.Textarea(),
             'pub_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
@@ -43,9 +30,4 @@ class CommentForm(forms.ModelForm):
 
     class Meta:
         model = Comment
-        fields = [
-            'text',
-        ]
-        labels = {
-            'text': 'Комментарий',
-        }
+        fields = ('text',)

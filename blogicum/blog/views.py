@@ -1,4 +1,6 @@
-from typing import Any
+from django.db.models import Count
+
+
 
 from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -19,29 +21,40 @@ from django.views.generic import (
 
 from .forms import CommentForm, PostForm
 from .models import Category, Comment, Post
+PAGINATE_BY = 10
 
 
-def get_post_queryset() -> Any:
-    """Возвращает базовый QuerySet для публикаций."""
-    return Post.objects.select_related(
-        'author', 'category', 'location'
-    ).filter(
-        is_published=True,
-        pub_date__lte=timezone.now(),
-        category__is_published=True
-    ).order_by('-pub_date')
+def get_post_queryset(
+    qs=None,
+    select_related=True,
+    filter_published=True,
+):
+    """
+    Возвращает QuerySet публикаций с возможностью гибкой настройки.
+    qs: исходный QuerySet (по умолчанию Post.objects)
+    select_related: подкачивать связанные объекты (author, category, location)
+    filter_published: фильтровать только опубликованные посты
+    """
+    if qs is None:
+        qs = Post.objects
+    if select_related:
+        qs = qs.select_related('author', 'category', 'location')
+    if filter_published:
+        qs = qs.filter(
+            is_published=True,
+            pub_date__lte=timezone.now(),
+            category__is_published=True
+        )
+    qs = qs.annotate(comment_count=Count('comments')).order_by('-pub_date')
+    return qs
 
 
 def paginate_queryset(request, queryset, per_page=10):
     paginator = Paginator(queryset, per_page)
     page_number = request.GET.get('page')
+
     page_obj = paginator.get_page(page_number)
     return page_obj
-
-
-def get_comment_count(post):
-    """Возвращает количество комментариев для данного поста."""
-    return post.comments.count()
 
 
 class IndexView(ListView):
@@ -54,14 +67,6 @@ class IndexView(ListView):
 
     def get_queryset(self):
         return get_post_queryset()
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        if hasattr(self, 'profile_user'):
-            context['profile'] = self.profile_user
-        for post in context['page_obj']:
-            post.comment_count = get_comment_count(post)
-        return context
 
 
 class CategoryPostsView(ListView):
@@ -78,13 +83,6 @@ class CategoryPostsView(ListView):
         )
         return get_post_queryset().filter(category=self.category)
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['category'] = self.category
-        for post in context['page_obj']:
-            post.comment_count = get_comment_count(post)
-        return context
-
 
 class PostDetailView(DetailView):
     """Детальная страница поста."""
@@ -92,7 +90,7 @@ class PostDetailView(DetailView):
     model = Post
     template_name = 'blog/detail.html'
     context_object_name = 'post'
-    pk_url_kwarg = 'id'
+    pk_url_kwarg = 'post_id'
 
     def get_object(self, queryset=None):
         if queryset is None:
@@ -153,17 +151,17 @@ class EditPostView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         return self.request.user == self.get_object().author
 
     def handle_no_permission(self):
-        return redirect('blog:post_detail', id=self.get_object().id)
+        return redirect('blog:post_detail', post_id=self.get_object().id)
 
     def get_success_url(self):
-        return reverse('blog:post_detail', kwargs={'id': self.object.id})
+        return reverse('blog:post_detail', kwargs={'post_id': self.object.id})
 
 
 class DeletePostView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     """Удаление публикации (только автор)."""
 
     model = Post
-    pk_url_kwarg = 'pk'
+    pk_url_kwarg = 'post_id'
     template_name = 'blog/detail.html'
     success_url = reverse_lazy('blog:index')
 
@@ -173,7 +171,6 @@ class DeletePostView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['confirm_delete'] = True
-        context['comments'] = self.object.comments.all()
         context['form'] = CommentForm()
         return context
 
@@ -191,7 +188,7 @@ class EditCommentView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
 
     def get_success_url(self):
         return reverse('blog:post_detail', kwargs={
-                       'id': self.get_object().post.id})
+                       'post_id': self.get_object().post.id})
 
 
 class DeleteCommentView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
@@ -206,7 +203,7 @@ class DeleteCommentView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
 
     def get_success_url(self):
         return reverse('blog:post_detail', kwargs={
-                       'id': self.get_object().post.id})
+                       'post_id': self.get_object().post.id})
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -225,11 +222,11 @@ class AddCommentView(LoginRequiredMixin, View):
             comment.author = request.user
             comment.post = post
             comment.save()
-        return redirect('blog:post_detail', id=post.id)
+        return redirect('blog:post_detail', post_id=post.id)
 
     def get(self, request, post_id):
         """Если кто-то зайдёт GET-запросом — просто редиректим на пост."""
-        return redirect('blog:post_detail', id=post_id)
+        return redirect('blog:post_detail', post_id=post_id)
 
 
 class ProfileView(ListView):
@@ -243,13 +240,14 @@ class ProfileView(ListView):
     def get_queryset(self):
         self.profile_user = get_object_or_404(
             User, username=self.kwargs['username'])
-        return self.profile_user.posts.all()
+        return get_post_queryset(
+            qs=self.profile_user.posts.all(),
+            filter_published=False
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['profile'] = self.profile_user
-        for post in context['page_obj']:
-            post.comment_count = get_comment_count(post)
         return context
 
 

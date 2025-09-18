@@ -1,17 +1,11 @@
 from django.urls import path
-from django.contrib.auth import views as auth_views
+
 from . import views
 
 
 app_name = 'blog'
 
-
 urlpatterns = [
-    path(
-        'auth/registration/',
-        views.RegisterView.as_view(),
-        name='registration',
-    ),
     path(
         '',
         views.IndexView.as_view(),
@@ -23,7 +17,7 @@ urlpatterns = [
         name='create_post',
     ),
     path(
-        'posts/<int:id>/',
+        'posts/<int:post_id>/',
         views.PostDetailView.as_view(),
         name='post_detail',
     ),
@@ -33,7 +27,7 @@ urlpatterns = [
         name='edit_post',
     ),
     path(
-        'posts/<int:pk>/delete/',
+        'posts/<int:post_id>/delete/',
         views.DeletePostView.as_view(),
         name='delete_post',
     ),
@@ -66,12 +60,5 @@ urlpatterns = [
         'profile/<str:username>/',
         views.ProfileView.as_view(),
         name='profile',
-    ),
-    path(
-        'auth/password_change/',
-        auth_views.PasswordChangeView.as_view(
-            template_name='registration/password_change_form.html',
-        ),
-        name='password_change',
     ),
 ]

@@ -1,10 +1,8 @@
-from typing import Optional
 
 from django.contrib.auth import get_user_model
 from django.db import models
 
 from blog.constants import MAX_TITLE_LENGTH
-
 
 User = get_user_model()
 
@@ -17,12 +15,12 @@ class TimestampedModel(models.Model):
         created_at: Дата и время создания
     """
 
-    is_published: bool = models.BooleanField(
+    is_published = models.BooleanField(
         default=True,
         verbose_name='Опубликовано',
         help_text='Снимите галочку, чтобы скрыть публикацию.'
     )
-    created_at: models.DateTimeField = models.DateTimeField(
+    created_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name='Добавлено'
     )
@@ -40,26 +38,26 @@ class Category(TimestampedModel):
         slug: Уникальный идентификатор для URL
     """
 
-    title: str = models.CharField(
+    title = models.CharField(
         max_length=256,
         verbose_name='Заголовок'
     )
-    description: str = models.TextField(
+    description = models.TextField(
         verbose_name='Описание'
     )
-    slug: str = models.SlugField(
+    slug = models.SlugField(
         unique=True,
         verbose_name='Идентификатор',
         help_text=(
-            'Идентификатор страницы для URL; '
-            'разрешены символы латиницы, '
-            'цифры, дефис и подчёркивание.'
-        )
+            'Идентификатор страницы для URL; разрешены символы латиницы, цифры, '
+            'дефис и подчёркивание.'
+        ),
     )
 
     class Meta:
         verbose_name = 'категория'
         verbose_name_plural = 'Категории'
+        ordering = ('title',)
 
     def __str__(self) -> str:
         """Возвращает строковое представление категории."""
@@ -73,7 +71,7 @@ class Location(TimestampedModel):
         name: Название места
     """
 
-    name: str = models.CharField(
+    name = models.CharField(
         max_length=256,
         verbose_name='Название места'
     )
@@ -81,6 +79,7 @@ class Location(TimestampedModel):
     class Meta:
         verbose_name = 'местоположение'
         verbose_name_plural = 'Местоположения'
+        ordering = ('name',)
 
     def __str__(self) -> str:
         """Возвращает строковое представление местоположения."""
@@ -99,19 +98,19 @@ class Post(TimestampedModel):
         category: Категория публикации
     """
 
-    title: str = models.CharField(
+    title = models.CharField(
         max_length=256,
         verbose_name='Заголовок'
     )
-    text: str = models.TextField(
+    text = models.TextField(
         verbose_name='Текст'
     )
-    pub_date: models.DateTimeField = models.DateTimeField(
+    pub_date = models.DateTimeField(
         verbose_name='Дата и время публикации',
         help_text=(
-            'Если установить дату и время в будущем '
-            '— можно делать отложенные публикации.'
-        )
+            'Если установить дату и время в будущем — можно делать отложенные '
+            'публикации.'
+        ),
     )
     image = models.ImageField(
         upload_to='post_images/',
@@ -119,29 +118,29 @@ class Post(TimestampedModel):
         null=True,
         verbose_name='Изображение',
     )
-    author: models.ForeignKey = models.ForeignKey(
+    author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
+        verbose_name='Автор публикации',
         related_name='posts',
-        verbose_name='Автор публикации'
     )
-    location: Optional[models.ForeignKey] = models.ForeignKey(
+    location = models.ForeignKey(
         Location,
         blank=True,
         null=True,
         on_delete=models.SET_NULL,
-        verbose_name='Местоположение'
+        verbose_name='Местоположение',
     )
-    category: Optional[models.ForeignKey] = models.ForeignKey(
+    category = models.ForeignKey(
         Category,
         null=True,
         on_delete=models.SET_NULL,
-        verbose_name='Категория'
+        verbose_name='Категория',
     )
 
     class Meta:
         default_related_name = 'posts'
-        ordering = ['-pub_date']
+        ordering = ('-pub_date',)
         verbose_name = 'публикация'
         verbose_name_plural = 'Публикации'
 
@@ -161,19 +160,19 @@ class Comment(TimestampedModel):
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
-        related_name='comments',
-        verbose_name='Публикация'
+        verbose_name='Публикация',
     )
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        verbose_name='Автор комментария'
+        verbose_name='Автор комментария',
     )
     text = models.TextField(
-        verbose_name='Текст комментария'
+        verbose_name='Текст комментария',
     )
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ('-created_at',)
         verbose_name = 'комментарий'
         verbose_name_plural = 'Комментарии'
+        default_related_name = 'comments'

@@ -3,6 +3,7 @@
   Страница пользователя {{ profile.username }}
 {% endblock %}
 {% block content %}
+  <p>{{ profile.first_name }}</p>
   <h1 class="mb-5 text-center ">Страница пользователя {{ profile.username }}</h1>
   <small>
     <ul class="list-group list-group-horizontal justify-content-center mb-3">
@@ -12,8 +13,8 @@
     </ul>
     <ul class="list-group list-group-horizontal justify-content-center">
       {% if user.is_authenticated and request.user == profile %}
-      <a class="btn btn-sm text-muted" href="{% url 'blog:edit_profile' %}">Редактировать профиль</a>
-      <a class="btn btn-sm text-muted" href="{% url 'blog:password_change' %}">Изменить пароль</a>
+        <a class="btn btn-sm text-muted" href="{% url 'blog:edit_profile' %}">Редактировать профиль</a>
+        <a class="btn btn-sm text-muted" href="{% url 'password_change' %}">Изменить пароль</a>
       {% endif %}
     </ul>
   </small>

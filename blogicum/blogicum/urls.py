@@ -4,12 +4,22 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth.views import LogoutView
 from django.urls import include, path
+from django.views.generic import CreateView
+from django.contrib.auth.forms import UserCreationForm
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('pages.urls')),
     path('', include('blog.urls', namespace='blog')),
-    path('login/', include('django.contrib.auth.urls')),
+    path('auth/', include('django.contrib.auth.urls')),
+    path('auth/registration/',
+         CreateView.as_view(
+            template_name='registration/registration_form.html',
+            form_class=UserCreationForm,
+            success_url='/',
+         ),
+         name='registration'
+    ),
     path('logout/', LogoutView.as_view(next_page='/'), name='logout'),
 ]
 
