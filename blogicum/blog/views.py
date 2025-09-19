@@ -12,7 +12,6 @@ from django.views.generic import (
     DetailView,
     ListView,
     UpdateView,
-    View,
 )
 
 from .constants import POSTS_PER_PAGE
@@ -20,12 +19,16 @@ from .forms import CommentForm, PostForm
 from .models import Category, Comment, Post
 
 
-def get_post_queryset(posts=Post.objects, select_related=True, filter_published=True):
+def get_post_queryset(
+    posts=Post.objects,
+    select_related=True,
+    filter_published=True,
+):
     """Возвращает QuerySet публикаций с возможностью гибкой настройки.
 
     Args:
         posts: исходный QuerySet (по умолчанию Post.objects)
-        select_related: подкачивать связанные объекты 
+        select_related: подкачивать связанные объекты
             (author, category, location)
         filter_published: фильтровать только опубликованные посты
 
@@ -133,7 +136,8 @@ class CreatePostView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse('blog:profile', kwargs={'username': self.request.user.username})
+        username = self.request.user.username
+        return reverse('blog:profile', kwargs={'username': username})
 
 
 class EditPostView(AuthorRequiredMixin, UpdateView):
