@@ -8,12 +8,7 @@ User = get_user_model()
 
 
 class TimestampedModel(models.Model):
-    """Базовая модель с общими полями.
-
-    Attributes:
-        is_published: Статус публикации
-        created_at: Дата и время создания
-    """
+    """Базовая модель с общими полями."""
 
     is_published = models.BooleanField(
         default=True,
@@ -30,13 +25,7 @@ class TimestampedModel(models.Model):
 
 
 class Category(TimestampedModel):
-    """Модель категории для публикаций.
-
-    Attributes:
-        title: Заголовок категории
-        description: Описание категории
-        slug: Уникальный идентификатор для URL
-    """
+    """Модель категории для публикаций."""
 
     title = models.CharField(
         max_length=256,
@@ -65,11 +54,7 @@ class Category(TimestampedModel):
 
 
 class Location(TimestampedModel):
-    """Модель местоположения публикации.
-
-    Attributes:
-        name: Название места
-    """
+    """Модель местоположения публикации."""
 
     name = models.CharField(
         max_length=256,
@@ -87,16 +72,7 @@ class Location(TimestampedModel):
 
 
 class Post(TimestampedModel):
-    """Модель публикации в блоге.
-
-    Attributes:
-        title: Заголовок публикации
-        text: Текст публикации
-        pub_date: Дата и время публикации
-        author: Автор публикации
-        location: Местоположение, связанное с публикацией
-        category: Категория публикации
-    """
+    """Модель публикации в блоге."""
 
     title = models.CharField(
         max_length=256,
