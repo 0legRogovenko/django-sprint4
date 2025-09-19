@@ -45,10 +45,11 @@ def get_post(
             pub_date__lte=timezone.now(),
             category__is_published=True
         )
-    order_by = Post._meta.ordering
     if annotate_comments:
-        posts = posts.annotate(comment_count=Count('comments'))
-    return posts.order_by(*order_by)
+        posts = posts.annotate(
+            comment_count=Count('comments')
+        ).order_by('-pub_date')
+    return posts
 
 
 def paginate_queryset(request, queryset, posts_per_page=POSTS_PER_PAGE):
@@ -65,8 +66,10 @@ class PostAuthorRequiredMixin(UserPassesTestMixin):
         return self.request.user == self.get_object().author
 
     def handle_no_permission(self):
-        post = self.get_object()
-        return redirect('blog:post_detail', post_id=post.id)
+        return redirect(
+            'blog:post_detail',
+            post_id=self.get_object().id
+        )
 
 
 class CommentAuthorRequiredMixin(UserPassesTestMixin):
@@ -76,8 +79,10 @@ class CommentAuthorRequiredMixin(UserPassesTestMixin):
         return self.request.user == self.get_object().author
 
     def handle_no_permission(self):
-        comment = self.get_object()
-        return redirect('blog:post_detail', post_id=comment.post.id)
+        return redirect(
+            'blog:post_detail',
+            post_id=self.get_object().post.id
+        )
 
 
 class IndexView(ListView):
@@ -107,8 +112,9 @@ class CategoryPostsView(ListView):
         )
 
     def get_queryset(self):
-        category = self.get_category()
-        return get_post(posts=category.posts.all())
+        return get_post(
+            posts=self.get_category().posts.all()
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -125,20 +131,16 @@ class PostDetailView(DetailView):
     pk_url_kwarg = 'post_id'
 
     def get_object(self, queryset=None):
-        post = super().get_object(queryset)
-        if self.request.user != post.author:
-            return get_object_or_404(
-                get_post(filter_published=True),
-                pk=post.pk
-            )
-        return post
+        if self.request.user == super().get_object(queryset).author:
+            return super().get_object(queryset)
+        return super().get_object(get_post())
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form'] = CommentForm()
         context['comments'] = (
             self.object.comments.all()
-            .order_by('created_at')  # тесты требуют явно указать порядок
+            .order_by('created_at')
         )
         return context
 
@@ -151,15 +153,11 @@ class CreatePostView(LoginRequiredMixin, CreateView):
     form_class = PostForm
 
     def form_valid(self, form):
-        self.object = form.save(commit=False)
-        self.object.author = self.request.user
+        form.instance.author = self.request.user
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse(
-            'blog:profile',
-            kwargs={'username': self.request.user.username}
-        )
+        return reverse('blog:profile', args=[self.request.user.username])
 
 
 class EditPostView(PostAuthorRequiredMixin, UpdateView):
@@ -169,11 +167,6 @@ class EditPostView(PostAuthorRequiredMixin, UpdateView):
     template_name = 'blog/create.html'
     form_class = PostForm
     pk_url_kwarg = 'post_id'
-
-    def form_valid(self, form):
-        self.object = form.save(commit=False)
-        self.object.save()
-        return super().form_valid(form)
 
     def get_success_url(self):
         return reverse(
@@ -192,10 +185,9 @@ class DeletePostView(PostAuthorRequiredMixin, DeleteView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        post = self.get_object()
         context['confirm_delete'] = True
         context['form'] = CommentForm()
-        context['object'] = post
+        context['object'] = self.get_object()
         return context
 
 
@@ -210,7 +202,7 @@ class EditCommentView(CommentAuthorRequiredMixin, UpdateView):
     def get_success_url(self):
         return reverse(
             'blog:post_detail',
-            kwargs={'post_id': self.kwargs.get('post_id')}
+            args=[self.object.post_id]
         )
 
 
@@ -252,12 +244,6 @@ class AddCommentView(LoginRequiredMixin, CreateView):
         return reverse(
             'blog:post_detail',
             args=[self.kwargs['post_id']]
-        )
-
-    def get(self, request, *args, **kwargs):
-        return redirect(
-            'blog:post_detail',
-            post_id=self.kwargs['post_id']
         )
 
 
