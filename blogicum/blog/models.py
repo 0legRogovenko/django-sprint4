@@ -125,6 +125,11 @@ class Post(TimestampedModel):
         return self.title[:MAX_TITLE_LENGTH]
 
 
+class CommentManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().order_by('created_at')
+
+
 class Comment(TimestampedModel):
     """
     Модель комментария к публикации.
@@ -146,9 +151,10 @@ class Comment(TimestampedModel):
     text = models.TextField(
         verbose_name='Текст комментария',
     )
+    objects = CommentManager()
 
     class Meta:
-        ordering = ('-created_at',)
+        ordering = ['-created_at']
         verbose_name = 'комментарий'
         verbose_name_plural = 'Комментарии'
         default_related_name = 'comments'

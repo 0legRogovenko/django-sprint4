@@ -3,6 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.models import User
 from django.core.paginator import Paginator
 from django.db.models import Count
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -19,7 +20,7 @@ from .forms import CommentForm, PostForm
 from .models import Category, Comment, Post
 
 
-def get_post(
+def get_filtered_posts(
     posts=Post.objects,
     select_related=True,
     filter_published=True,
@@ -48,8 +49,8 @@ def get_post(
     if annotate_comments:
         posts = posts.annotate(
             comment_count=Count('comments')
-        ).order_by('-pub_date')
-    return posts
+        )
+    return posts.order_by(*Post._meta.ordering)
 
 
 def paginate_queryset(request, queryset, posts_per_page=POSTS_PER_PAGE):
@@ -68,7 +69,7 @@ class PostAuthorRequiredMixin(UserPassesTestMixin):
     def handle_no_permission(self):
         return redirect(
             'blog:post_detail',
-            post_id=self.get_object().id
+            post_id=self.kwargs['post_id']
         )
 
 
@@ -81,7 +82,7 @@ class CommentAuthorRequiredMixin(UserPassesTestMixin):
     def handle_no_permission(self):
         return redirect(
             'blog:post_detail',
-            post_id=self.get_object().post.id
+            post_id=self.kwargs['post_id']
         )
 
 
@@ -92,7 +93,7 @@ class IndexView(ListView):
     template_name = 'blog/index.html'
     context_object_name = 'page_obj'
     paginate_by = POSTS_PER_PAGE
-    queryset = get_post()
+    queryset = get_filtered_posts()
 
 
 class CategoryPostsView(ListView):
@@ -112,7 +113,7 @@ class CategoryPostsView(ListView):
         )
 
     def get_queryset(self):
-        return get_post(
+        return get_filtered_posts(
             posts=self.get_category().posts.all()
         )
 
@@ -131,16 +132,20 @@ class PostDetailView(DetailView):
     pk_url_kwarg = 'post_id'
 
     def get_object(self, queryset=None):
-        if self.request.user == super().get_object(queryset).author:
-            return super().get_object(queryset)
-        return super().get_object(get_post())
+        post = super().get_object(queryset)
+        if self.request.user == post.author or (
+            post.is_published
+            and post.pub_date <= timezone.now()
+            and (post.category is None or post.category.is_published)
+        ):
+            return post
+        raise Http404
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form'] = CommentForm()
         context['comments'] = (
             self.object.comments.all()
-            .order_by('created_at')
         )
         return context
 
@@ -202,7 +207,7 @@ class EditCommentView(CommentAuthorRequiredMixin, UpdateView):
     def get_success_url(self):
         return reverse(
             'blog:post_detail',
-            args=[self.object.post_id]
+            kwargs={'post_id': self.kwargs['post_id']}
         )
 
 
@@ -264,7 +269,7 @@ class ProfileView(ListView):
 
     def get_queryset(self):
         author = self.get_author()
-        return get_post(
+        return get_filtered_posts(
             posts=author.posts.all(),
             filter_published=self.request.user != author
         )
