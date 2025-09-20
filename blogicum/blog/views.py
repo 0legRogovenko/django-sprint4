@@ -134,7 +134,10 @@ class PostDetailView(DetailView):
         post = super().get_object(queryset)
         if self.request.user == post.author:
             return post
-        published_posts = get_posts_with_options(filter_published=True)
+        published_posts = get_posts_with_options(
+            select_related=False,
+            annotate_comments=False
+        )
         return super().get_object(published_posts)
 
     def get_context_data(self, **kwargs):
