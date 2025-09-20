@@ -20,7 +20,7 @@ from .forms import CommentForm, PostForm
 from .models import Category, Comment, Post
 
 
-def get_filtered_posts(
+def get_posts_with_options(
     posts=Post.objects,
     select_related=True,
     filter_published=True,
@@ -49,8 +49,8 @@ def get_filtered_posts(
     if annotate_comments:
         posts = posts.annotate(
             comment_count=Count('comments')
-        )
-    return posts.order_by(*Post._meta.ordering)
+        ).order_by(*Post._meta.ordering)
+    return posts
 
 
 def paginate_queryset(request, queryset, posts_per_page=POSTS_PER_PAGE):
@@ -93,7 +93,7 @@ class IndexView(ListView):
     template_name = 'blog/index.html'
     context_object_name = 'page_obj'
     paginate_by = POSTS_PER_PAGE
-    queryset = get_filtered_posts()
+    queryset = get_posts_with_options()
 
 
 class CategoryPostsView(ListView):
@@ -113,7 +113,7 @@ class CategoryPostsView(ListView):
         )
 
     def get_queryset(self):
-        return get_filtered_posts(
+        return get_posts_with_options(
             posts=self.get_category().posts.all()
         )
 
@@ -133,13 +133,10 @@ class PostDetailView(DetailView):
 
     def get_object(self, queryset=None):
         post = super().get_object(queryset)
-        if self.request.user == post.author or (
-            post.is_published
-            and post.pub_date <= timezone.now()
-            and (post.category is None or post.category.is_published)
-        ):
+        if self.request.user == post.author:
             return post
-        raise Http404
+        published_posts = get_posts_with_options(filter_published=True)
+        return super().get_object(published_posts)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -269,7 +266,7 @@ class ProfileView(ListView):
 
     def get_queryset(self):
         author = self.get_author()
-        return get_filtered_posts(
+        return get_posts_with_options(
             posts=author.posts.all(),
             filter_published=self.request.user != author
         )
